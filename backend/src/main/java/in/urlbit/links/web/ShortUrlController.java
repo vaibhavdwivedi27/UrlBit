@@ -1,10 +1,12 @@
 package in.urlbit.links.web;
 
+import in.urlbit.common.error.UnauthorizedException;
 import in.urlbit.links.dto.CreateShortUrlRequest;
 import in.urlbit.links.dto.ShortUrlResponse;
 import in.urlbit.links.dto.UpdateShortUrlRequest;
 import in.urlbit.links.service.GuestCookieUtil;
 import in.urlbit.links.service.LinkService;
+import in.urlbit.security.UserPrincipal;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -15,6 +17,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -40,11 +43,11 @@ public class ShortUrlController {
     @PostMapping
     public ResponseEntity<ShortUrlResponse> create(
             @Valid @RequestBody CreateShortUrlRequest request,
+            @AuthenticationPrincipal UserPrincipal principal,
             HttpServletRequest servletRequest,
             HttpServletResponse servletResponse) {
 
-        // Until BE3 authentication is active, requests without auth are processed as guests
-        UUID ownerId = null;
+        UUID ownerId = principal != null ? principal.id() : null;
 
         var guestContext = guestCookieUtil.resolveGuest(servletRequest, servletResponse);
         String remoteIp = servletRequest.getRemoteAddr();
@@ -56,28 +59,39 @@ public class ShortUrlController {
     }
 
     @GetMapping("/{id}")
-    public ShortUrlResponse getById(@PathVariable Long id) {
-        UUID ownerId = null; // Will be extracted from authenticated principal in BE3
+    public ShortUrlResponse getById(
+            @PathVariable Long id, @AuthenticationPrincipal UserPrincipal principal) {
+        UUID ownerId = principal != null ? principal.id() : null;
         return linkService.getById(id, ownerId);
     }
 
     @GetMapping
-    public Page<ShortUrlResponse> listOwned(@PageableDefault(size = 20) Pageable pageable) {
-        UUID ownerId = null; // Will be extracted from authenticated principal in BE3
-        return linkService.listByOwner(ownerId, pageable);
+    public Page<ShortUrlResponse> listOwned(
+            @PageableDefault(size = 20) Pageable pageable,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        if (principal == null) {
+            throw new UnauthorizedException("Authentication required to view links");
+        }
+        return linkService.listByOwner(principal.id(), pageable);
     }
 
     @PatchMapping("/{id}")
     public ShortUrlResponse update(
-            @PathVariable Long id, @RequestBody UpdateShortUrlRequest request) {
-        UUID ownerId = null;
-        return linkService.update(id, ownerId, request);
+            @PathVariable Long id,
+            @RequestBody UpdateShortUrlRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        if (principal == null) {
+            throw new UnauthorizedException("Authentication required to update links");
+        }
+        return linkService.update(id, principal.id(), request);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        UUID ownerId = null;
-        linkService.delete(id, ownerId);
+    public void delete(@PathVariable Long id, @AuthenticationPrincipal UserPrincipal principal) {
+        if (principal == null) {
+            throw new UnauthorizedException("Authentication required to delete links");
+        }
+        linkService.delete(id, principal.id());
     }
 }

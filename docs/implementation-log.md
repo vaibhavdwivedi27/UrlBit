@@ -49,3 +49,29 @@
   - Distributed Redis rate limiting deferred to BE5.
 - **Next milestone:**
   - **BE3 — Authentication, authorization and abuse baseline**
+
+## Milestone BE3 — Authentication, authorization and abuse baseline
+- **Date:** 2026-10-24
+- **Status:** Completed
+- **Features completed:**
+  - Password hashing with `BCryptPasswordEncoder` (strength 12); raw passwords never logged or returned.
+  - Short-lived signed 15-minute access JWTs with signature, algorithm, expiry, and `urlbit.in` issuer validation (`JwtTokenProvider`).
+  - Rotating opaque refresh tokens stored only as SHA-256 hashes in `refresh_tokens`.
+  - Refresh token family tracking with automatic **replay attack detection** (revoking entire session family upon reuse of an old rotated token).
+  - Spring Security stateless filter chain (`SecurityConfig`) with `JwtAuthenticationFilter` supporting Bearer authorization header and `urlbit_access_token` cookie.
+  - User authentication endpoints: `POST /api/v1/auth/signup`, `POST /api/v1/auth/login`, `POST /api/v1/auth/refresh`, `POST /api/v1/auth/logout`.
+  - User profile endpoint: `GET /api/v1/me`.
+  - Single `users.role` column (`USER`, `TENANT`, `ADMIN`) with strict role parity (no role-gated product features).
+  - Link ownership binding in `ShortUrlController`: authenticated users have links bound to their principal; guests use transactional guest quota; private management endpoints reject IDOR with uniform 404.
+  - Safe Browsing integration client groundwork (`SafeBrowsingClient`) with 500ms timeout budget and fallback policy.
+  - Updated Postman collection (`docs/postman/urlbit.postman_collection.json`) with complete auth flow and auto-token chaining.
+- **Commands & tests executed:**
+  - `.\mvnw.cmd test`: PASS (46/46 unit tests)
+  - `.\mvnw.cmd verify`: PASS (23/23 integration tests against PostgreSQL Testcontainer, 69 total tests)
+  - `.\mvnw.cmd spotless:check`: PASS (0 format violations)
+- **Known limitations:**
+  - Redis cache-aside on redirect hot path deferred to BE4.
+  - Distributed Redis rate limiting deferred to BE5.
+  - Click analytics deferred to BE6.
+- **Next milestone:**
+  - **BE4 — Redis caching and performance**

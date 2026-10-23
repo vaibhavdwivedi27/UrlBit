@@ -40,6 +40,157 @@
       ]
     },
     {
+      "name": "Authentication & Profile (/api/v1/auth)",
+      "item": [
+        {
+          "name": "1. Signup (Register User)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"StrongPassword123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/signup",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "signup"]
+            },
+            "description": "Registers a new user account. Role is unconditionally assigned as USER. Returns 201 Created."
+          },
+          "response": []
+        },
+        {
+          "name": "2. Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var json = pm.response.json();",
+                  "    pm.collectionVariables.set('authToken', json.accessToken);",
+                  "    pm.collectionVariables.set('refreshToken', json.refreshToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"StrongPassword123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login"]
+            },
+            "description": "Logs in with email and password. Returns signed 15-minute access JWT and rotating opaque refresh token."
+          },
+          "response": []
+        },
+        {
+          "name": "3. Get My Profile (/api/v1/me)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "me"]
+            },
+            "description": "Retrieves the authenticated user profile from the JWT subject."
+          },
+          "response": []
+        },
+        {
+          "name": "4. Refresh Access Token (Token Rotation)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var json = pm.response.json();",
+                  "    pm.collectionVariables.set('authToken', json.accessToken);",
+                  "    pm.collectionVariables.set('refreshToken', json.refreshToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "refresh"]
+            },
+            "description": "Exchanges an active refresh token for a new access JWT and new rotated refresh token. Attempting to reuse an old refresh token triggers replay detection and revokes the whole session family."
+          },
+          "response": []
+        },
+        {
+          "name": "5. Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "logout"]
+            },
+            "description": "Revokes the active refresh token and clears session cookies."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "Link Management (/api/v1/urls)",
       "item": [
         {
@@ -83,6 +234,16 @@
         {
           "name": "Create Short URL with Custom Alias (Authenticated)",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "POST",
             "header": [
               {
@@ -99,13 +260,23 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "v1", "urls"]
             },
-            "description": "Creates a short link with a custom alias and custom future expiration date."
+            "description": "Creates a short link bound to the authenticated user with a custom alias and custom future expiration date."
           },
           "response": []
         },
         {
           "name": "Get Short URL by ID",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "header": [],
             "url": {
@@ -113,13 +284,23 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "v1", "urls", "{{lastCreatedId}}"]
             },
-            "description": "Retrieves metadata for an existing short URL."
+            "description": "Retrieves metadata for an existing short URL. Verifies ownership."
           },
           "response": []
         },
         {
           "name": "List Owned URLs (Paginated)",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "header": [],
             "url": {
@@ -137,13 +318,23 @@
                 }
               ]
             },
-            "description": "Lists paginated URLs belonging to the caller."
+            "description": "Lists paginated URLs belonging to the authenticated caller."
           },
           "response": []
         },
         {
           "name": "Update Short URL Status or Expiration",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "PATCH",
             "header": [
               {
@@ -167,6 +358,16 @@
         {
           "name": "Delete Short URL (Soft Delete)",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "DELETE",
             "header": [],
             "url": {
@@ -204,6 +405,16 @@
     {
       "key": "baseUrl",
       "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
       "type": "string"
     },
     {

@@ -36,6 +36,24 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
+    @ExceptionHandler(UnauthorizedException.class)
+    public ProblemDetail handleUnauthorized(UnauthorizedException ex) {
+        ProblemDetail problem =
+                ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+        problem.setType(URI.create(ProblemType.UNAUTHORIZED));
+        problem.setTitle("Unauthorized");
+        return problem;
+    }
+
+    @ExceptionHandler(DuplicateEmailException.class)
+    public ProblemDetail handleDuplicateEmail(DuplicateEmailException ex) {
+        ProblemDetail problem =
+                ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        problem.setType(URI.create(ProblemType.VALIDATION_ERROR));
+        problem.setTitle("Email Already Registered");
+        return problem;
+    }
+
     @ExceptionHandler(AliasTakenException.class)
     public ProblemDetail handleAliasTaken(AliasTakenException ex) {
         ProblemDetail problem =
