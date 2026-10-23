@@ -22,9 +22,22 @@ class RedirectIT extends AbstractIntegrationTest {
 
     @Autowired private ShortUrlRepository shortUrlRepository;
 
+    @org.junit.jupiter.api.BeforeEach
+    void setUp() {
+        var httpClient =
+                org.apache.hc.client5.http.impl.classic.HttpClients.custom()
+                        .disableRedirectHandling()
+                        .build();
+        restTemplate
+                .getRestTemplate()
+                .setRequestFactory(
+                        new org.springframework.http.client.HttpComponentsClientHttpRequestFactory(
+                                httpClient));
+    }
+
     @Test
     void activeLinkRedirectsWith302Found() {
-        String code = "red302";
+        String code = "red-" + java.util.UUID.randomUUID().toString().substring(0, 6);
         String destination = "https://example.org/destination-target";
 
         ShortUrl link =
@@ -40,7 +53,6 @@ class RedirectIT extends AbstractIntegrationTest {
                         Instant.now());
         shortUrlRepository.save(link);
 
-        // Disable automatic redirect following to inspect HTTP 302 and Location header
         ResponseEntity<Void> response = restTemplate.getForEntity("/" + code, Void.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FOUND);
@@ -56,7 +68,7 @@ class RedirectIT extends AbstractIntegrationTest {
 
     @Test
     void disabledLinkReturns404() {
-        String code = "dis404";
+        String code = "dis-" + java.util.UUID.randomUUID().toString().substring(0, 6);
         ShortUrl link =
                 new ShortUrl(
                         null,
@@ -77,7 +89,7 @@ class RedirectIT extends AbstractIntegrationTest {
 
     @Test
     void expiredLinkReturns404() {
-        String code = "exp404";
+        String code = "exp-" + java.util.UUID.randomUUID().toString().substring(0, 6);
         ShortUrl link =
                 new ShortUrl(
                         null,
