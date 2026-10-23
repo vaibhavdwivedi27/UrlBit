@@ -5,6 +5,7 @@ import in.urlbit.common.error.GuestQuotaExceededException;
 import in.urlbit.common.error.ResourceNotFoundException;
 import in.urlbit.common.error.TakedownActiveException;
 import in.urlbit.common.error.UnsafeDestinationException;
+import in.urlbit.config.RateLimitProperties;
 import in.urlbit.links.cache.CachedLink;
 import in.urlbit.links.cache.LinkCacheService;
 import in.urlbit.links.domain.DisabledReason;
@@ -16,6 +17,7 @@ import in.urlbit.links.dto.UpdateShortUrlRequest;
 import in.urlbit.links.event.LinkInvalidatedEvent;
 import in.urlbit.links.repository.GuestQuotaRepository;
 import in.urlbit.links.repository.ShortUrlRepository;
+import in.urlbit.ratelimit.service.DistributedRateLimiter;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
@@ -44,7 +46,8 @@ public class LinkService {
     private final ReservedPathValidator reservedPathValidator;
     private final DestinationSafetyValidator safetyValidator;
     private final SafeBrowsingClient safeBrowsingClient;
-    private final IpRateLimiter ipRateLimiter;
+    private final DistributedRateLimiter rateLimiter;
+    private final RateLimitProperties rateLimitProperties;
     private final LinkCacheService linkCacheService;
     private final ApplicationEventPublisher eventPublisher;
     private final String baseUrl;
@@ -56,7 +59,8 @@ public class LinkService {
             ReservedPathValidator reservedPathValidator,
             DestinationSafetyValidator safetyValidator,
             SafeBrowsingClient safeBrowsingClient,
-            IpRateLimiter ipRateLimiter,
+            DistributedRateLimiter rateLimiter,
+            RateLimitProperties rateLimitProperties,
             LinkCacheService linkCacheService,
             ApplicationEventPublisher eventPublisher,
             @Value("${urlbit.base-url:https://urlbit.in}") String baseUrl) {
@@ -66,7 +70,8 @@ public class LinkService {
         this.reservedPathValidator = reservedPathValidator;
         this.safetyValidator = safetyValidator;
         this.safeBrowsingClient = safeBrowsingClient;
-        this.ipRateLimiter = ipRateLimiter;
+        this.rateLimiter = rateLimiter;
+        this.rateLimitProperties = rateLimitProperties;
         this.linkCacheService = linkCacheService;
         this.eventPublisher = eventPublisher;
         this.baseUrl = baseUrl;
@@ -87,7 +92,12 @@ public class LinkService {
 
         // Step 2: Guest-specific rules and atomic quota increment
         if (ownerId == null) {
-            ipRateLimiter.checkLimit(remoteIp);
+            String ipKey = rateLimiter.deriveIpKey(remoteIp);
+            rateLimiter.checkLimit(
+                    "rl:create:ip:" + ipKey,
+                    rateLimitProperties.getCreate().getGuestLimit(),
+                    rateLimitProperties.getCreate().getGuestWindow(),
+                    true);
 
             if (request.customAlias() != null && !request.customAlias().isBlank()) {
                 throw new UnsafeDestinationException(
@@ -110,6 +120,12 @@ public class LinkService {
         }
 
         // Step 3: Authenticated creation
+        rateLimiter.checkLimit(
+                "rl:create:user:" + ownerId,
+                rateLimitProperties.getCreate().getAuthenticatedLimit(),
+                rateLimitProperties.getCreate().getAuthenticatedWindow(),
+                true);
+
         if (request.expiresAt() != null && !request.expiresAt().isAfter(now)) {
             throw new UnsafeDestinationException("Expiration timestamp must be in the future");
         }

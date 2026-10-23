@@ -5,6 +5,9 @@ spring:
   flyway:
     enabled: true
 
+server:
+  forward-headers-strategy: framework
+
 logging:
   level:
     in.urlbit: DEBUG

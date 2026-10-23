@@ -14,8 +14,13 @@ import in.urlbit.auth.repository.UserRepository;
 import in.urlbit.common.error.DuplicateEmailException;
 import in.urlbit.common.error.ResourceNotFoundException;
 import in.urlbit.common.error.UnauthorizedException;
+import in.urlbit.config.RateLimitProperties;
 import in.urlbit.links.service.GuestCookieUtil;
+import in.urlbit.ratelimit.service.DistributedRateLimiter;
 import in.urlbit.security.JwtTokenProvider;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
@@ -39,6 +44,8 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final DistributedRateLimiter rateLimiter;
+    private final RateLimitProperties rateLimitProperties;
     private final long refreshTokenExpirationSeconds;
 
     public AuthService(
@@ -46,12 +53,16 @@ public class AuthService {
             RefreshTokenRepository refreshTokenRepository,
             PasswordEncoder passwordEncoder,
             JwtTokenProvider jwtTokenProvider,
+            DistributedRateLimiter rateLimiter,
+            RateLimitProperties rateLimitProperties,
             @Value("${urlbit.jwt.refresh-token-expiration-seconds:2592000}")
                     long refreshTokenExpirationSeconds) {
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
+        this.rateLimiter = rateLimiter;
+        this.rateLimitProperties = rateLimitProperties;
         this.refreshTokenExpirationSeconds = refreshTokenExpirationSeconds;
     }
 
@@ -82,7 +93,22 @@ public class AuthService {
 
     @Transactional
     public AuthResponse login(LoginRequest request) {
+        return login(request, "unknown");
+    }
+
+    @Transactional
+    public AuthResponse login(LoginRequest request, String remoteIp) {
         String normalizedEmail = request.email().strip().toLowerCase(Locale.ROOT);
+        String ipKey = rateLimiter.deriveIpKey(remoteIp);
+        String emailHash = hashString(normalizedEmail);
+        String rateLimitKey = "rl:login:" + ipKey + ":" + emailHash;
+
+        // Brute-force protection: fail-closed to stop password guessing during Redis degradation
+        rateLimiter.checkLimit(
+                rateLimitKey,
+                rateLimitProperties.getLogin().getLimit(),
+                rateLimitProperties.getLogin().getWindow(),
+                false);
 
         User user =
                 userRepository
@@ -209,5 +235,15 @@ public class AuthService {
         byte[] bytes = new byte[32];
         SECURE_RANDOM.nextBytes(bytes);
         return HexFormat.of().formatHex(bytes);
+    }
+
+    private String hashString(String input) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hash).substring(0, 16);
+        } catch (NoSuchAlgorithmException ex) {
+            return Integer.toHexString(input.hashCode());
+        }
     }
 }

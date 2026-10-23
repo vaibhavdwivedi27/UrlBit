@@ -26,9 +26,12 @@ public class AuthController {
     public static final String REFRESH_TOKEN_COOKIE = "urlbit_refresh_token";
 
     private final AuthService authService;
+    private final in.urlbit.common.web.ClientIpResolver clientIpResolver;
 
-    public AuthController(AuthService authService) {
+    public AuthController(
+            AuthService authService, in.urlbit.common.web.ClientIpResolver clientIpResolver) {
         this.authService = authService;
+        this.clientIpResolver = clientIpResolver;
     }
 
     @PostMapping("/signup")
@@ -39,8 +42,11 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(
-            @Valid @RequestBody LoginRequest request, HttpServletResponse response) {
-        AuthResponse authResponse = authService.login(request);
+            @Valid @RequestBody LoginRequest request,
+            HttpServletRequest servletRequest,
+            HttpServletResponse response) {
+        String remoteIp = clientIpResolver.resolveClientIp(servletRequest);
+        AuthResponse authResponse = authService.login(request, remoteIp);
         setAuthCookies(response, authResponse.accessToken(), authResponse.refreshToken());
         return ResponseEntity.ok(authResponse);
     }

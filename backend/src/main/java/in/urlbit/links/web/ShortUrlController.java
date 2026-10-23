@@ -34,10 +34,15 @@ public class ShortUrlController {
 
     private final LinkService linkService;
     private final GuestCookieUtil guestCookieUtil;
+    private final in.urlbit.common.web.ClientIpResolver clientIpResolver;
 
-    public ShortUrlController(LinkService linkService, GuestCookieUtil guestCookieUtil) {
+    public ShortUrlController(
+            LinkService linkService,
+            GuestCookieUtil guestCookieUtil,
+            in.urlbit.common.web.ClientIpResolver clientIpResolver) {
         this.linkService = linkService;
         this.guestCookieUtil = guestCookieUtil;
+        this.clientIpResolver = clientIpResolver;
     }
 
     @PostMapping
@@ -50,7 +55,7 @@ public class ShortUrlController {
         UUID ownerId = principal != null ? principal.id() : null;
 
         var guestContext = guestCookieUtil.resolveGuest(servletRequest, servletResponse);
-        String remoteIp = servletRequest.getRemoteAddr();
+        String remoteIp = clientIpResolver.resolveClientIp(servletRequest);
 
         ShortUrlResponse response =
                 linkService.create(request, ownerId, guestContext.idHash(), remoteIp);

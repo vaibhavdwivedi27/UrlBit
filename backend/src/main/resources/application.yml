@@ -22,6 +22,7 @@ spring:
 
 server:
   port: ${SERVER_PORT:8080}
+  forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:framework}
 
 management:
   endpoints:
@@ -53,4 +54,13 @@ urlbit:
   cache:
     link-ttl: 3600s
     negative-ttl: 30s
+  rate-limit:
+    create:
+      authenticated-limit: 30
+      authenticated-window: 60s
+      guest-limit: 30
+      guest-window: 60s
+    login:
+      limit: 10
+      window: 300s
 
