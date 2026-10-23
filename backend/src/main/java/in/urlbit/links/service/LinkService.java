@@ -39,6 +39,7 @@ public class LinkService {
     private final Base62CodeGenerator codeGenerator;
     private final ReservedPathValidator reservedPathValidator;
     private final DestinationSafetyValidator safetyValidator;
+    private final SafeBrowsingClient safeBrowsingClient;
     private final IpRateLimiter ipRateLimiter;
     private final String baseUrl;
 
@@ -48,6 +49,7 @@ public class LinkService {
             Base62CodeGenerator codeGenerator,
             ReservedPathValidator reservedPathValidator,
             DestinationSafetyValidator safetyValidator,
+            SafeBrowsingClient safeBrowsingClient,
             IpRateLimiter ipRateLimiter,
             @Value("${urlbit.base-url:https://urlbit.in}") String baseUrl) {
         this.shortUrlRepository = shortUrlRepository;
@@ -55,6 +57,7 @@ public class LinkService {
         this.codeGenerator = codeGenerator;
         this.reservedPathValidator = reservedPathValidator;
         this.safetyValidator = safetyValidator;
+        this.safeBrowsingClient = safeBrowsingClient;
         this.ipRateLimiter = ipRateLimiter;
         this.baseUrl = baseUrl;
     }
@@ -65,8 +68,12 @@ public class LinkService {
 
         // Step 1: Destination safety validation outside the DB transaction
         safetyValidator.validate(request.longUrl());
-
+        boolean isSafe = safeBrowsingClient.isSafe(request.longUrl(), ownerId != null);
+        if (!isSafe) {
+            throw new UnsafeDestinationException("Destination flagged as unsafe by Safe Browsing");
+        }
         Instant now = Instant.now();
+        Instant safetyCheckAt = isSafe ? now : null;
 
         // Step 2: Guest-specific rules and atomic quota increment
         if (ownerId == null) {
@@ -88,7 +95,8 @@ public class LinkService {
             }
 
             Instant guestExpiry = now.plus(GUEST_LINK_TTL);
-            return createWithGeneratedCode(null, request.longUrl(), guestExpiry, now);
+            return createWithGeneratedCode(
+                    null, request.longUrl(), guestExpiry, safetyCheckAt, now);
         }
 
         // Step 3: Authenticated creation
@@ -102,14 +110,21 @@ public class LinkService {
                     request.longUrl(),
                     request.customAlias().strip(),
                     request.expiresAt(),
+                    safetyCheckAt,
                     now);
         }
 
-        return createWithGeneratedCode(ownerId, request.longUrl(), request.expiresAt(), now);
+        return createWithGeneratedCode(
+                ownerId, request.longUrl(), request.expiresAt(), safetyCheckAt, now);
     }
 
     private ShortUrlResponse createWithCustomAlias(
-            UUID ownerId, String longUrl, String alias, Instant expiresAt, Instant now) {
+            UUID ownerId,
+            String longUrl,
+            String alias,
+            Instant expiresAt,
+            Instant safetyCheckAt,
+            Instant now) {
 
         if (!ALIAS_PATTERN.matcher(alias).matches()) {
             throw new UnsafeDestinationException(
@@ -130,7 +145,7 @@ public class LinkService {
                         expiresAt,
                         ShortUrlStatus.ACTIVE.name(),
                         null,
-                        now);
+                        safetyCheckAt);
 
         if (id == null) {
             throw new AliasTakenException(alias);
@@ -141,7 +156,7 @@ public class LinkService {
     }
 
     private ShortUrlResponse createWithGeneratedCode(
-            UUID ownerId, String longUrl, Instant expiresAt, Instant now) {
+            UUID ownerId, String longUrl, Instant expiresAt, Instant safetyCheckAt, Instant now) {
 
         for (int attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
             String candidateCode = codeGenerator.generate();
@@ -159,7 +174,7 @@ public class LinkService {
                             expiresAt,
                             ShortUrlStatus.ACTIVE.name(),
                             null,
-                            now);
+                            safetyCheckAt);
 
             if (id != null) {
                 ShortUrl entity = shortUrlRepository.findById(id).orElseThrow();

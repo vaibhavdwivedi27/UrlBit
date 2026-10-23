@@ -39,7 +39,8 @@ public class SecurityConfig {
                                                 HttpMethod.POST,
                                                 "/api/v1/auth/signup",
                                                 "/api/v1/auth/login",
-                                                "/api/v1/auth/refresh")
+                                                "/api/v1/auth/refresh",
+                                                "/api/v1/auth/logout")
                                         .permitAll()
                                         // Guest URL shortening is permitted without authentication
                                         .requestMatchers(HttpMethod.POST, "/api/v1/urls")
@@ -54,8 +55,8 @@ public class SecurityConfig {
                                                 "/v3/api-docs/**",
                                                 "/swagger-ui.html")
                                         .permitAll()
-                                        // Me endpoint and logout require authentication
-                                        .requestMatchers("/api/v1/me", "/api/v1/auth/logout")
+                                        // Me endpoint requires authentication
+                                        .requestMatchers("/api/v1/me")
                                         .authenticated()
                                         // Private management endpoints verify ownership inside
                                         // controller/service

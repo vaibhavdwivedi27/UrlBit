@@ -29,6 +29,10 @@ public class DestinationSafetyValidator {
             throw new UnsafeDestinationException("Destination URL must not be blank");
         }
 
+        if (rawUrl.length() > 2048) {
+            throw new UnsafeDestinationException("URL length exceeds limit of 2048 characters");
+        }
+
         URI uri;
         try {
             uri = new URI(rawUrl.strip());

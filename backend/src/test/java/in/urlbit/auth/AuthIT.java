@@ -99,4 +99,31 @@ class AuthIT extends AbstractIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
+
+    @Test
+    void logoutRevokesRefreshTokenWithoutAccessToken() {
+        String email = "logout-" + UUID.randomUUID() + "@example.com";
+        String password = "SecurePassword123!";
+
+        // 1. Signup & login
+        restTemplate.postForEntity(
+                "/api/v1/auth/signup", new SignupRequest(email, password), UserResponse.class);
+        ResponseEntity<AuthResponse> loginRes =
+                restTemplate.postForEntity(
+                        "/api/v1/auth/login",
+                        new LoginRequest(email, password),
+                        AuthResponse.class);
+        String refreshToken = loginRes.getBody().refreshToken();
+
+        // 2. Logout WITHOUT Authorization header
+        var logoutReq = new RefreshTokenRequest(refreshToken);
+        ResponseEntity<Void> logoutRes =
+                restTemplate.postForEntity("/api/v1/auth/logout", logoutReq, Void.class);
+        assertThat(logoutRes.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+        // 3. Attempting to refresh after logout must fail with 401
+        ResponseEntity<String> refreshRes =
+                restTemplate.postForEntity("/api/v1/auth/refresh", logoutReq, String.class);
+        assertThat(refreshRes.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
 }
