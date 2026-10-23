@@ -30,3 +30,7 @@ Thumbs.db
 node_modules/
 dist/
 .cache/
+
+# Local personal docs
+LOCAL_RUN.md
+
