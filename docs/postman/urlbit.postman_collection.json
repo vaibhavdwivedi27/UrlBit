@@ -233,6 +233,21 @@
         },
         {
           "name": "Create Short URL with Custom Alias (Authenticated)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var json = pm.response.json();",
+                  "    pm.collectionVariables.set('lastCreatedId', json.id);",
+                  "    pm.collectionVariables.set('lastCreatedCode', json.code);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "auth": {
               "type": "bearer",
@@ -395,6 +410,91 @@
               "path": ["{{lastCreatedCode}}"]
             },
             "description": "Resolves a short code. Returns 302 Found with Location header pointing to destination. Returns uniform 404 for unknown, disabled, or expired links."
+          },
+          "response": []
+        },
+        {
+          "name": "Redirect with Referer Header (Simulate Click Tracking)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Referer",
+                "value": "https://twitter.com/urlbit/status/123",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/{{lastCreatedCode}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{lastCreatedCode}}"]
+            },
+            "description": "Resolves a short code while providing an HTTP Referer header. Returns HTTP 302 immediately and asynchronously records a click event with sanitized referrer domain ('twitter.com')."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Click Analytics (/api/v1/urls/{id}/analytics)",
+      "item": [
+        {
+          "name": "Get Link Analytics (Default 30 Days)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/urls/{{lastCreatedId}}/analytics",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "urls", "{{lastCreatedId}}", "analytics"]
+            },
+            "description": "Retrieves aggregated click analytics for an owned link over the default 30-day window. Returns total clicks, daily time-series counts, top referrer domains, and delivery guarantee disclaimer ('best_effort_at_least_once'). Verifies authenticated link ownership (returns 404 for non-owners)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Link Analytics with Bounded Date Range",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/urls/{{lastCreatedId}}/analytics?from=2026-03-01&to=2026-03-31",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "urls", "{{lastCreatedId}}", "analytics"],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2026-03-01",
+                  "description": "Start date (YYYY-MM-DD)"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-03-31",
+                  "description": "End date (YYYY-MM-DD, max 90 days from start date)"
+                }
+              ]
+            },
+            "description": "Retrieves click analytics for an owned link across an explicit date window. Bounded by a 90-day maximum limit to protect database aggregation performance. Inverted or excessive date ranges return 400 Bad Request."
           },
           "response": []
         }
