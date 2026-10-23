@@ -1,0 +1,54 @@
+#!/bin/sh
+# Maven Wrapper script for Unix
+# Licensed under the Apache License, Version 2.0
+
+set -e
+
+MAVEN_PROJECTBASEDIR="$(cd "$(dirname "$0")" && pwd)"
+WRAPPER_PROPERTIES="$MAVEN_PROJECTBASEDIR/.mvn/wrapper/maven-wrapper.properties"
+
+# Find Java
+if [ -n "$JAVA_HOME" ]; then
+    JAVACMD="$JAVA_HOME/bin/java"
+else
+    JAVACMD="java"
+fi
+
+if ! command -v "$JAVACMD" >/dev/null 2>&1; then
+    echo "ERROR: JAVA_HOME is not set and 'java' is not in PATH" >&2
+    exit 1
+fi
+
+# Read distributionUrl
+DISTRIBUTION_URL=$(grep '^distributionUrl=' "$WRAPPER_PROPERTIES" | cut -d= -f2-)
+
+if [ -z "$DISTRIBUTION_URL" ]; then
+    echo "ERROR: Could not read distributionUrl from $WRAPPER_PROPERTIES" >&2
+    exit 1
+fi
+
+MAVEN_HOME="$HOME/.m2/wrapper/dists/apache-maven-3.9.9"
+MVN_CMD="$MAVEN_HOME/bin/mvn"
+
+# Download if needed
+if [ ! -f "$MVN_CMD" ]; then
+    echo "Downloading Maven from $DISTRIBUTION_URL..."
+    DOWNLOAD_DIR="$HOME/.m2/wrapper/dists"
+    mkdir -p "$DOWNLOAD_DIR"
+    DOWNLOAD_FILE="$DOWNLOAD_DIR/maven.zip"
+
+    if command -v curl >/dev/null 2>&1; then
+        curl -fsSL -o "$DOWNLOAD_FILE" "$DISTRIBUTION_URL"
+    elif command -v wget >/dev/null 2>&1; then
+        wget -q -O "$DOWNLOAD_FILE" "$DISTRIBUTION_URL"
+    else
+        echo "ERROR: curl or wget required to download Maven" >&2
+        exit 1
+    fi
+
+    unzip -q -o "$DOWNLOAD_FILE" -d "$DOWNLOAD_DIR"
+    rm -f "$DOWNLOAD_FILE"
+    chmod +x "$MVN_CMD"
+fi
+
+exec "$MVN_CMD" -f "$MAVEN_PROJECTBASEDIR/pom.xml" "$@"
