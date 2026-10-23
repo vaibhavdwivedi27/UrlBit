@@ -31,4 +31,18 @@ public abstract class AbstractIntegrationTest {
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
     }
+
+    public in.urlbit.auth.domain.User createTestUser(
+            in.urlbit.auth.repository.UserRepository userRepository, String email) {
+        var user =
+                new in.urlbit.auth.domain.User(
+                        java.util.UUID.randomUUID(),
+                        email,
+                        "test_hash",
+                        java.time.Instant.now(),
+                        java.time.Instant.now(),
+                        in.urlbit.auth.domain.UserStatus.ACTIVE,
+                        in.urlbit.auth.domain.UserRole.USER);
+        return userRepository.save(user);
+    }
 }

@@ -22,3 +22,30 @@
   - Auth, JWT, and rate limiting deferred to BE3–BE5 per milestone plan.
 - **Next milestone:**
   - **BE2 — Core URL APIs, data integrity and concurrency**
+
+## Milestone BE2 — Core URL APIs, data integrity and concurrency
+- **Date:** 2026-10-23
+- **Status:** Completed
+- **Features completed:**
+  - Domain models and JPA repositories: `ShortUrl`, `GuestQuota`, `User` (no Lombok, records for DTOs).
+  - 7-character random Base62 code generator (`Base62CodeGenerator`) with `SecureRandom` and bounded collision retry.
+  - Native PostgreSQL `INSERT ... ON CONFLICT (code) DO NOTHING RETURNING id` avoiding transaction aborts on code collisions.
+  - Case-insensitive reserved route validator (`ReservedPathValidator`) blocking routes like `api`, `login`, `dashboard`, `actuator`.
+  - Destination safety validator (`DestinationSafetyValidator`) with host normalization (case, trailing dot, IDN Punycode), loopback/private IP literal rejection, self-domain loop protection (`urlbit.in` + subdomains), and denylist checking.
+  - HttpOnly guest cookie handling (`GuestCookieUtil`) with fixed 30-day non-sliding `Max-Age` and SHA-256 guest hashing.
+  - Transactional guest quota counter (`guest_quotas`) atomically incremented up to 5 links; 6th request rejected with 429 (`ProblemType.GUEST_QUOTA_EXCEEDED`).
+  - Single-instance in-memory IP rate limiter (`IpRateLimiter`) keyed by IPv4 address and IPv6 `/64` prefix.
+  - Scheduled guest quota purge job (`GuestQuotaPurgeJob`) cleaning up records older than the 30-day cookie lifetime.
+  - Public redirect endpoint `GET /{code}` returning HTTP 302 Found for active links, and uniform HTTP 404 for unknown, disabled, deleted, and expired codes (D-04).
+  - Management endpoints under `/api/v1/urls`: `POST` (create), `GET /{id}` (detail), `GET` (paginated list), `PATCH /{id}` (update), `DELETE /{id}` (soft-delete).
+  - Operator abuse takedown CLI (`TakedownCli`) disabling links with `disabled_reason = 'ABUSE_TAKEDOWN'`, and `PATCH` check preventing owners from re-enabling them.
+- **Commands & tests executed:**
+  - `.\mvnw.cmd test`: PASS (42/42 unit tests)
+  - `.\mvnw.cmd verify`: PASS (19/19 integration tests against real PostgreSQL Testcontainer, 61 total tests)
+  - `.\mvnw.cmd spotless:check`: PASS (0 format violations)
+- **Known limitations:**
+  - Auth, JWT access/refresh token rotation, and authenticated session management deferred to BE3.
+  - Redis cache-aside on redirect hot path deferred to BE4.
+  - Distributed Redis rate limiting deferred to BE5.
+- **Next milestone:**
+  - **BE3 — Authentication, authorization and abuse baseline**
