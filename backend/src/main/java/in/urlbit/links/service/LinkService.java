@@ -12,6 +12,7 @@ import in.urlbit.links.domain.DisabledReason;
 import in.urlbit.links.domain.ShortUrl;
 import in.urlbit.links.domain.ShortUrlStatus;
 import in.urlbit.links.dto.CreateShortUrlRequest;
+import in.urlbit.links.dto.RedirectDestination;
 import in.urlbit.links.dto.ShortUrlResponse;
 import in.urlbit.links.dto.UpdateShortUrlRequest;
 import in.urlbit.links.event.LinkInvalidatedEvent;
@@ -222,7 +223,7 @@ public class LinkService {
     }
 
     @Transactional(readOnly = true)
-    public Optional<String> resolveRedirect(String code) {
+    public Optional<RedirectDestination> resolveRedirect(String code) {
         if (code == null || reservedPathValidator.isReserved(code)) {
             return Optional.empty();
         }
@@ -236,7 +237,7 @@ public class LinkService {
             if (!cached.isRedirectable(now)) {
                 return Optional.empty();
             }
-            return Optional.of(cached.originalUrl());
+            return Optional.of(new RedirectDestination(cached.id(), cached.originalUrl()));
         }
 
         // Step 2: Cache miss -> Read from PostgreSQL
@@ -254,7 +255,7 @@ public class LinkService {
             return Optional.empty();
         }
 
-        return Optional.of(link.getOriginalUrl());
+        return Optional.of(new RedirectDestination(link.getId(), link.getOriginalUrl()));
     }
 
     @Transactional(readOnly = true)

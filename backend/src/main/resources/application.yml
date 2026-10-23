@@ -63,4 +63,8 @@ urlbit:
     login:
       limit: 10
       window: 300s
+  analytics:
+    queue-capacity: 10000
+    flush-interval-ms: 1000
+    batch-size: 1000
 

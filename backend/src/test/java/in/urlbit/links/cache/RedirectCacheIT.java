@@ -8,6 +8,7 @@ import in.urlbit.auth.repository.UserRepository;
 import in.urlbit.links.domain.ShortUrl;
 import in.urlbit.links.domain.ShortUrlStatus;
 import in.urlbit.links.dto.CreateShortUrlRequest;
+import in.urlbit.links.dto.RedirectDestination;
 import in.urlbit.links.dto.UpdateShortUrlRequest;
 import in.urlbit.links.repository.ShortUrlRepository;
 import in.urlbit.links.service.LinkService;
@@ -58,13 +59,13 @@ class RedirectCacheIT extends AbstractIntegrationTest {
         assertThat(redisTemplate.hasKey("link:" + code)).isFalse();
 
         // 1st lookup: cache miss -> queries PostgreSQL -> populates Redis
-        Optional<String> firstResult = linkService.resolveRedirect(code);
-        assertThat(firstResult).contains(destination);
+        Optional<RedirectDestination> firstResult = linkService.resolveRedirect(code);
+        assertThat(firstResult.map(RedirectDestination::destinationUrl)).contains(destination);
         assertThat(redisTemplate.hasKey("link:" + code)).isTrue();
 
         // 2nd lookup: cache hit directly from Redis
-        Optional<String> secondResult = linkService.resolveRedirect(code);
-        assertThat(secondResult).contains(destination);
+        Optional<RedirectDestination> secondResult = linkService.resolveRedirect(code);
+        assertThat(secondResult.map(RedirectDestination::destinationUrl)).contains(destination);
     }
 
     @Test
@@ -100,7 +101,7 @@ class RedirectCacheIT extends AbstractIntegrationTest {
         String code = "neg-" + UUID.randomUUID().toString().substring(0, 6);
 
         // 1. Query unknown code -> empty result
-        Optional<String> miss = linkService.resolveRedirect(code);
+        Optional<RedirectDestination> miss = linkService.resolveRedirect(code);
         assertThat(miss).isEmpty();
 
         // Negative entry is cached in Redis with short TTL
@@ -114,8 +115,9 @@ class RedirectCacheIT extends AbstractIntegrationTest {
         assertThat(redisTemplate.hasKey("link:" + code)).isFalse();
 
         // 3. Query again -> now resolves to newly created URL
-        Optional<String> hit = linkService.resolveRedirect(code);
-        assertThat(hit).contains("https://example.com/now-exists");
+        Optional<RedirectDestination> hit = linkService.resolveRedirect(code);
+        assertThat(hit.map(RedirectDestination::destinationUrl))
+                .contains("https://example.com/now-exists");
     }
 
     @Test
@@ -183,8 +185,8 @@ class RedirectCacheIT extends AbstractIntegrationTest {
         REDIS.getDockerClient().pauseContainerCmd(REDIS.getContainerId()).exec();
         try {
             // Must not throw an exception; must gracefully fall back to PostgreSQL
-            Optional<String> result = linkService.resolveRedirect(code);
-            assertThat(result).contains(destination);
+            Optional<RedirectDestination> result = linkService.resolveRedirect(code);
+            assertThat(result.map(RedirectDestination::destinationUrl)).contains(destination);
         } finally {
             // Unpause Redis container to restore test environment
             REDIS.getDockerClient().unpauseContainerCmd(REDIS.getContainerId()).exec();

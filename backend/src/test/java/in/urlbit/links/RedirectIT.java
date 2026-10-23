@@ -27,6 +27,7 @@ class RedirectIT extends AbstractIntegrationTest {
         var httpClient =
                 org.apache.hc.client5.http.impl.classic.HttpClients.custom()
                         .disableRedirectHandling()
+                        .disableCookieManagement()
                         .build();
         restTemplate
                 .getRestTemplate()

@@ -77,6 +77,16 @@ class FlywayMigrationIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void urlClickReferrerTableExists() {
+        var count =
+                jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM information_schema.tables"
+                                + " WHERE table_name = 'url_click_referrer'",
+                        Integer.class);
+        assertThat(count).isEqualTo(1);
+    }
+
+    @Test
     void shortUrlsCodeHasUniqueConstraint() {
         var count =
                 jdbcTemplate.queryForObject(
