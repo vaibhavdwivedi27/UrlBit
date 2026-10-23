@@ -1,0 +1,220 @@
+{
+  "info": {
+    "_postman_id": "a93b4f62-7e81-4235-901d-61c028ea7c12",
+    "name": "Urlbit API",
+    "description": "Postman collection for Urlbit - URL shortening and link analytics SaaS.\nSupports local and deployed environments.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health & Docs",
+      "item": [
+        {
+          "name": "Actuator Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["actuator", "health"]
+            },
+            "description": "Checks the application and database health status (returns status: UP)."
+          },
+          "response": []
+        },
+        {
+          "name": "OpenAPI Specification (JSON)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v3/api-docs",
+              "host": ["{{baseUrl}}"],
+              "path": ["v3", "api-docs"]
+            },
+            "description": "Fetches the complete OpenAPI 3.0 specification."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Link Management (/api/v1/urls)",
+      "item": [
+        {
+          "name": "Create Short URL (Guest)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var json = pm.response.json();",
+                  "    pm.collectionVariables.set('lastCreatedId', json.id);",
+                  "    pm.collectionVariables.set('lastCreatedCode', json.code);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"longUrl\": \"https://github.com/vaibhavdwivedi27/UrlBit\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/urls",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "urls"]
+            },
+            "description": "Creates a short link as a guest. Server assigns a 7-character random Base62 code and 7-day expiration. Maximum 5 creations per guest identifier."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Short URL with Custom Alias (Authenticated)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"longUrl\": \"https://spring.io/projects/spring-boot\",\n  \"customAlias\": \"spring-boot-guide\",\n  \"expiresAt\": \"2027-01-01T00:00:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/urls",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "urls"]
+            },
+            "description": "Creates a short link with a custom alias and custom future expiration date."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Short URL by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/urls/{{lastCreatedId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "urls", "{{lastCreatedId}}"]
+            },
+            "description": "Retrieves metadata for an existing short URL."
+          },
+          "response": []
+        },
+        {
+          "name": "List Owned URLs (Paginated)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/urls?page=0&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "urls"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Lists paginated URLs belonging to the caller."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Short URL Status or Expiration",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"DISABLED\",\n  \"expiresAt\": \"2027-06-30T23:59:59Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/urls/{{lastCreatedId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "urls", "{{lastCreatedId}}"]
+            },
+            "description": "Updates status (ACTIVE/DISABLED) or expiration. Re-enabling is rejected if link was taken down for abuse."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Short URL (Soft Delete)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/urls/{{lastCreatedId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "urls", "{{lastCreatedId}}"]
+            },
+            "description": "Soft deletes a short URL (returns 204 No Content). Deleted links return 404 on redirect."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Public Redirect (/{code})",
+      "item": [
+        {
+          "name": "Redirect by Short Code (HTTP 302)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/{{lastCreatedCode}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{lastCreatedCode}}"]
+            },
+            "description": "Resolves a short code. Returns 302 Found with Location header pointing to destination. Returns uniform 404 for unknown, disabled, or expired links."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "lastCreatedId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "lastCreatedCode",
+      "value": "abc1234",
+      "type": "string"
+    }
+  ]
+}
