@@ -48,9 +48,9 @@ public class SecurityConfig {
                                         // Public redirect hot path
                                         .requestMatchers(HttpMethod.GET, "/{code:[a-zA-Z0-9_-]+}")
                                         .permitAll()
-                                        // Public docs and health
+                                        // Public docs and health/metrics
                                         .requestMatchers(
-                                                "/actuator/health",
+                                                "/actuator/**",
                                                 "/swagger-ui/**",
                                                 "/v3/api-docs/**",
                                                 "/swagger-ui.html")

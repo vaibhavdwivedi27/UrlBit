@@ -5,12 +5,15 @@ import in.urlbit.common.error.GuestQuotaExceededException;
 import in.urlbit.common.error.ResourceNotFoundException;
 import in.urlbit.common.error.TakedownActiveException;
 import in.urlbit.common.error.UnsafeDestinationException;
+import in.urlbit.links.cache.CachedLink;
+import in.urlbit.links.cache.LinkCacheService;
 import in.urlbit.links.domain.DisabledReason;
 import in.urlbit.links.domain.ShortUrl;
 import in.urlbit.links.domain.ShortUrlStatus;
 import in.urlbit.links.dto.CreateShortUrlRequest;
 import in.urlbit.links.dto.ShortUrlResponse;
 import in.urlbit.links.dto.UpdateShortUrlRequest;
+import in.urlbit.links.event.LinkInvalidatedEvent;
 import in.urlbit.links.repository.GuestQuotaRepository;
 import in.urlbit.links.repository.ShortUrlRepository;
 import java.time.Duration;
@@ -21,6 +24,7 @@ import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -41,6 +45,8 @@ public class LinkService {
     private final DestinationSafetyValidator safetyValidator;
     private final SafeBrowsingClient safeBrowsingClient;
     private final IpRateLimiter ipRateLimiter;
+    private final LinkCacheService linkCacheService;
+    private final ApplicationEventPublisher eventPublisher;
     private final String baseUrl;
 
     public LinkService(
@@ -51,6 +57,8 @@ public class LinkService {
             DestinationSafetyValidator safetyValidator,
             SafeBrowsingClient safeBrowsingClient,
             IpRateLimiter ipRateLimiter,
+            LinkCacheService linkCacheService,
+            ApplicationEventPublisher eventPublisher,
             @Value("${urlbit.base-url:https://urlbit.in}") String baseUrl) {
         this.shortUrlRepository = shortUrlRepository;
         this.guestQuotaRepository = guestQuotaRepository;
@@ -59,6 +67,8 @@ public class LinkService {
         this.safetyValidator = safetyValidator;
         this.safeBrowsingClient = safeBrowsingClient;
         this.ipRateLimiter = ipRateLimiter;
+        this.linkCacheService = linkCacheService;
+        this.eventPublisher = eventPublisher;
         this.baseUrl = baseUrl;
     }
 
@@ -152,6 +162,7 @@ public class LinkService {
         }
 
         ShortUrl entity = shortUrlRepository.findById(id).orElseThrow();
+        eventPublisher.publishEvent(new LinkInvalidatedEvent(alias));
         return ShortUrlResponse.from(entity, baseUrl);
     }
 
@@ -200,10 +211,34 @@ public class LinkService {
             return Optional.empty();
         }
 
-        return shortUrlRepository
-                .findByCode(code)
-                .filter(link -> link.isRedirectable(Instant.now()))
-                .map(ShortUrl::getOriginalUrl);
+        Instant now = Instant.now();
+
+        // Step 1: Cache-aside lookup in Redis
+        Optional<CachedLink> cachedOpt = linkCacheService.get(code);
+        if (cachedOpt.isPresent()) {
+            CachedLink cached = cachedOpt.get();
+            if (!cached.isRedirectable(now)) {
+                return Optional.empty();
+            }
+            return Optional.of(cached.originalUrl());
+        }
+
+        // Step 2: Cache miss -> Read from PostgreSQL
+        Optional<ShortUrl> linkOpt = shortUrlRepository.findByCode(code);
+        if (linkOpt.isEmpty()) {
+            // Negative cache entry to mitigate brute-force enumeration attacks
+            linkCacheService.put(code, CachedLink.negative());
+            return Optional.empty();
+        }
+
+        ShortUrl link = linkOpt.get();
+        linkCacheService.put(code, CachedLink.of(link));
+
+        if (!link.isRedirectable(now)) {
+            return Optional.empty();
+        }
+
+        return Optional.of(link.getOriginalUrl());
     }
 
     @Transactional(readOnly = true)
@@ -272,6 +307,7 @@ public class LinkService {
 
         link.setUpdatedAt(now);
         ShortUrl saved = shortUrlRepository.save(link);
+        eventPublisher.publishEvent(new LinkInvalidatedEvent(link.getCode()));
         return ShortUrlResponse.from(saved, baseUrl);
     }
 
@@ -292,6 +328,7 @@ public class LinkService {
         link.setStatus(ShortUrlStatus.DELETED);
         link.setUpdatedAt(Instant.now());
         shortUrlRepository.save(link);
+        eventPublisher.publishEvent(new LinkInvalidatedEvent(link.getCode()));
     }
 
     @Transactional
@@ -308,7 +345,38 @@ public class LinkService {
         link.setDisabledReason(DisabledReason.ABUSE_TAKEDOWN);
         link.setUpdatedAt(Instant.now());
         shortUrlRepository.save(link);
+        eventPublisher.publishEvent(new LinkInvalidatedEvent(code));
         log.info("Abuse takedown executed on code '{}' with reason: {}", code, reason);
+    }
+
+    @Transactional
+    public int rescanBatch(int limit) {
+        java.util.List<ShortUrl> candidates = shortUrlRepository.findBatchForSafetyRescan(limit);
+        if (candidates.isEmpty()) {
+            return 0;
+        }
+
+        Instant now = Instant.now();
+        int disabledCount = 0;
+
+        for (ShortUrl link : candidates) {
+            boolean isSafe =
+                    safeBrowsingClient.isSafe(link.getOriginalUrl(), link.getOwnerId() != null);
+            if (!isSafe) {
+                link.setStatus(ShortUrlStatus.DISABLED);
+                link.setDisabledReason(DisabledReason.ABUSE_TAKEDOWN);
+                eventPublisher.publishEvent(new LinkInvalidatedEvent(link.getCode()));
+                disabledCount++;
+                log.warn(
+                        "Safety re-scan flagged link '{}' as unsafe! Disabled for abuse.",
+                        link.getCode());
+            }
+            link.setLastSafetyCheckAt(now);
+            link.setUpdatedAt(now);
+            shortUrlRepository.save(link);
+        }
+
+        return disabledCount;
     }
 
     @Transactional

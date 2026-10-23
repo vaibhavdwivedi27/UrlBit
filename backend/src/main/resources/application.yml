@@ -12,6 +12,13 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 250ms
+      lettuce:
+        shutdown-timeout: 200ms
 
 server:
   port: ${SERVER_PORT:8080}
@@ -20,7 +27,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,prometheus
+        include: health,info,prometheus,metrics
   endpoint:
     health:
       show-details: when-authorized
@@ -43,4 +50,7 @@ urlbit:
     access-token-expiration-seconds: 900
     refresh-token-expiration-seconds: 2592000
     issuer: urlbit.in
+  cache:
+    link-ttl: 3600s
+    negative-ttl: 30s
 

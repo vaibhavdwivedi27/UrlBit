@@ -41,4 +41,19 @@ public interface ShortUrlRepository extends JpaRepository<ShortUrl, Long> {
             @Param("status") String status,
             @Param("disabledReason") String disabledReason,
             @Param("lastSafetyCheckAt") Instant lastSafetyCheckAt);
+
+    /**
+     * Claims a batch of active links requiring a safety re-scan, prioritizing uninspected links
+     * (last_safety_check_at IS NULL) and the oldest checks.
+     *
+     * <p>Uses SELECT ... FOR UPDATE SKIP LOCKED to guarantee multiple application instances never
+     * claim the same links concurrently.
+     */
+    @Query(
+            value =
+                    "SELECT * FROM short_urls WHERE status = 'ACTIVE'"
+                            + " ORDER BY last_safety_check_at NULLS FIRST, id ASC"
+                            + " LIMIT :limit FOR UPDATE SKIP LOCKED",
+            nativeQuery = true)
+    java.util.List<ShortUrl> findBatchForSafetyRescan(@Param("limit") int limit);
 }

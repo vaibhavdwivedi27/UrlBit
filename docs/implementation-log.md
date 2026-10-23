@@ -75,3 +75,32 @@
   - Click analytics deferred to BE6.
 - **Next milestone:**
   - **BE4 — Redis caching and performance**
+
+## Milestone BE4 — Redis caching and performance
+- **Date:** 2026-10-24
+- **Status:** Completed
+- **Features completed:**
+  - Integrated `spring-boot-starter-data-redis` with Lettuce connection pool and bounded timeouts (250ms command timeout).
+  - Cache-aside redirect resolution on `GET /{code}` caching immutable JSON payload `CachedLink` under key `link:{code}`.
+  - Expiration-bounded TTL calculation: cache TTL is strictly $\min(\text{configuredTTL}, \text{secondsUntilExpiry})$, ensuring cached entries never outlive link expiration.
+  - Negative caching for unknown codes with short TTL (30s) to mitigate brute-force enumeration attacks.
+  - Post-commit cache invalidation (`LinkCacheInvalidator`) using `@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)` triggered by `LinkInvalidatedEvent`:
+    - Evicts key upon link status update (`PATCH /api/v1/urls/{id}`).
+    - Evicts key upon soft-delete (`DELETE /api/v1/urls/{id}`).
+    - Evicts key upon abuse takedown (`TakedownCli`).
+    - Evicts key upon custom alias creation (`POST /api/v1/urls`) to ensure previous negative cache misses are immediately invalidated.
+  - Safe fail-open outage policy: Redis connection/command exceptions log warnings and fall back seamlessly to PostgreSQL without failing redirect requests.
+  - Micrometer cache metrics: counters `cache.hits`, `cache.misses`, and `cache.errors` registered with tag `cache=links`.
+  - Scheduled Safe Browsing re-scan job (`SafeBrowsingRescanJob`) claiming active link batches via `SELECT ... FOR UPDATE SKIP LOCKED`, disabling flagged links with `ABUSE_TAKEDOWN`, and invalidating them from Redis.
+  - Singleton Redis Testcontainer (`redis:7-alpine`) added to `AbstractIntegrationTest`.
+  - Comprehensive integration test suite in `RedirectCacheIT` verifying cache hits, TTL bounds, negative caching, post-commit eviction, and container pause outage fail-open.
+- **Commands & tests executed:**
+  - `.\mvnw.cmd test`: PASS (46/46 unit tests)
+  - `.\mvnw.cmd verify`: PASS (29/29 integration tests, 75 total tests against PostgreSQL 16 & Redis 7 Testcontainers)
+  - `.\mvnw.cmd spotless:check`: PASS (0 format violations)
+- **Known limitations:**
+  - Distributed Redis rate limiting with atomic Lua script deferred to BE5.
+  - Asynchronous click analytics and batch flushes deferred to BE6.
+- **Next milestone:**
+  - **BE5 — Distributed rate limiting**
+
