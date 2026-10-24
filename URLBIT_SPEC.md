@@ -73,8 +73,12 @@ Payments, billing, teams, QR generation, custom domains, multi-region, multi-ten
 | Persistence | Spring Data JPA + PostgreSQL | Relational integrity and indexed lookups |
 | Migrations | Flyway | Versioned schema |
 | Cache | Redis, Spring Data Redis | Fast code lookup and distributed coordination |
-| Frontend | React + TypeScript + Vite + Tailwind CSS | Lightweight SPA |
-| Analytics charts | Recharts | Simple time series |
+| Frontend SPA | React 18/19, TypeScript, Vite | Modern, lightweight, fast HMR client |
+| UI Styling | Tailwind CSS | Utility-first, zero-runtime SaaS design system |
+| Server State | TanStack Query (React Query v5) | Declarative caching, auto-refetch, mutation states |
+| Client Routing | React Router v6 | SPA navigation (landing, auth, dashboard, analytics) |
+| Analytics charts | Recharts | SVG time-series click trends and referring domains |
+| Icons & Toasts | Lucide React, Sonner, qrcode.react | Feather icons, accessible toasts, instant QR codes |
 | Tests | JUnit 5, Mockito, Spring Boot Test, Testcontainers, Playwright optional | Unit/integration/E2E coverage |
 | Observability | Actuator, Micrometer, Prometheus, Grafana, structured logs | Inspect throughput and latency |
 | Load | k6 | Reproducible performance experiments |
@@ -478,9 +482,13 @@ Prefer package-by-feature within a modular monolith, with controller → service
 - **Done:** A reviewer can start the backend, run tests, call the APIs, and reproduce benchmark methodology without the React frontend.
 
 ### FE1 — Frontend and full SaaS demo (after BE9)
-- [ ] React landing, signup/login, dashboard, create/link list/detail, basic analytics screens.
-- [ ] Accessible forms, loading/error states, copy-link UX and E2E tests.
-- **Done:** UI uses the documented APIs without bypassing backend validation or authorization.
+- [ ] **Stack:** React 18/19, TypeScript, Vite, Tailwind CSS, TanStack Query v5, React Router v6, Lucide React, Recharts, Sonner, qrcode.react.
+- [ ] **Landing Page (`/`):** Hero, value proposition, instant anonymous shortener with live 5-link guest quota indicator, instant copy UX, and QR code modal.
+- [ ] **Auth Pages / Modal (`/login`, `/signup`):** Accessible credential forms with RFC 9457 error translation; automatic cookie auth handling (`credentials: 'include'`).
+- [ ] **Dashboard (`/dashboard`):** KPI overview (total links, aggregate clicks), create link modal (custom alias, optional expiry), searchable & paginated link table with status toggles (ACTIVE/DISABLED) and soft delete.
+- [ ] **Analytics View (`/dashboard/links/:id`):** Real-time daily click trend timeline (Recharts SVG chart), top referring domains breakdown, and QR code export.
+- [ ] **API Client & Architecture:** Strict TypeScript interfaces matching backend DTOs; centralized RFC 9457 Problem Details error handler; zero tokens in `localStorage` (secure HttpOnly cookies only).
+- **Done:** UI uses the documented `/api/v1` APIs without bypassing backend validation or authorization; forms handle all error types smoothly.
 
 ### C — Optional SaaS expansion
 - [ ] API keys, developer docs, quotas, verified custom domains and team workspaces.

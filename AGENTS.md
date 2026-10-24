@@ -112,13 +112,15 @@ Return: implemented changes; files touched; tests/commands actually run and outc
 - Do not introduce microservices, CQRS, event sourcing, generic framework layers or new queues without a documented need and approval.
 
 ### Frontend
-- React + TypeScript, functional components and reusable UI primitives.
-- Typed API client and domain types; do not duplicate API contract assumptions throughout components.
-- Separate pages, components, hooks, and API/data access.
-- Show loading, empty, error and success states; make forms keyboard-accessible.
-- Never store JWT access or refresh tokens in `localStorage`; use secure HttpOnly cookies for browser token transport with CSRF protections.
+- **Stack:** React 18/19 + TypeScript + Vite 6 + Tailwind CSS.
+- **Server State & Routing:** TanStack Query v5 (`@tanstack/react-query`) for declarative server caching, auto-refetch, and mutation tracking; React Router v6 for SPA routing.
+- **UI Tooling:** Recharts for analytics time-series charts, Lucide React for modern feather-style icons, Sonner for accessible toast notifications, and `qrcode.react` for instant QR code generation.
+- **Project Structure:** Modular organization under `frontend/src/` (`api/`, `components/`, `pages/`, `hooks/`, `types/`).
+- **Contracts:** Typed API client and domain types mirroring Java backend records (`ShortUrlResponse`, `ProblemDetail`); never duplicate API assumptions or leave untyped `any` signatures.
+- **Security:** Never store JWT access or refresh tokens in `localStorage` or `sessionStorage`; use secure HttpOnly cookies for browser token transport (`credentials: 'include'`) with CSRF protections.
+- **UX & Accessibility:** Show loading skeletons, empty states, error banners, and success toasts; make all forms keyboard-accessible (`aria-label`, visible focus rings).
 - UI visibility is not authorization; backend checks remain mandatory.
-- Keep design consistent and mobile-friendly; do not add animation libraries without need.
+- Keep design consistent, clean, and mobile-friendly; do not add heavy animation libraries without need.
 
 ### Persistence
 - PostgreSQL is source of truth; Redis is an optimization and shared rate-limit store.
