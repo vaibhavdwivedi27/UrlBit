@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+@variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-urlbit-blue: #0052FF;
+  --color-urlbit-cyan: #00D2FF;
+  --color-urlbit-neon: #00F0FF;
+  --color-urlbit-navy: #050B18;
+  --color-urlbit-card: #0B1528;
+  --color-urlbit-surface: #0F1E36;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+@layer utilities {
+  .bg-urlbit-gradient {
+    background: linear-gradient(135deg, #0052FF 0%, #00D2FF 100%);
+  }
+
+  .text-urlbit-gradient {
+    background: linear-gradient(135deg, #0066FF 0%, #00D2FF 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .text-glow {
+    text-shadow: 0 0 20px rgba(0, 210, 255, 0.4);
+  }
+
+  .card-glass {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+  }
+
+  :where(.dark, .dark *) .card-glass {
+    background-color: rgba(11, 21, 40, 0.75);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(0, 210, 255, 0.15);
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+  }
+
+  .card-glass-hover {
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .card-glass-hover:hover {
+    border-color: rgba(0, 82, 255, 0.4);
+    box-shadow: 0 4px 25px rgba(0, 82, 255, 0.08);
+    transform: translateY(-1px);
+  }
+  :where(.dark, .dark *) .card-glass-hover:hover {
+    border-color: rgba(0, 210, 255, 0.4);
+    box-shadow: 0 0 25px rgba(0, 210, 255, 0.12);
+  }
+
+  .glow-cyan {
+    box-shadow: 0 0 30px rgba(0, 210, 255, 0.25);
+  }
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+:where(.dark, .dark *) ::-webkit-scrollbar-thumb {
+  background: #1e293b;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+:where(.dark, .dark *) ::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
