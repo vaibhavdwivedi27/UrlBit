@@ -236,7 +236,7 @@ Prefer deterministic tests: inject `Clock` for time-sensitive logic, avoid sleep
 ./mvnw verify -Dtest=NONE -Dsurefire.failIfNoSpecifiedTests=false -Dit.test=ClassNameIT   # one integration test
 ./mvnw spotless:apply              # fix formatting
 ./mvnw spotless:check              # verify formatting (CI)
-docker compose -f ../infra/compose.yml up -d                # local PostgreSQL/Redis
+docker compose -f ../infra/compose.local.yml up -d          # local PostgreSQL/Redis
 ```
 
 Integration tests need a running Docker daemon for Testcontainers. Keep this list accurate when the build changes.

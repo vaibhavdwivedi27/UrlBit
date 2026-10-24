@@ -24,6 +24,48 @@
           "response": []
         },
         {
+          "name": "Actuator Liveness Probe",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/health/liveness",
+              "host": ["{{baseUrl}}"],
+              "path": ["actuator", "health", "liveness"]
+            },
+            "description": "Liveness probe for container/orchestrator (returns status: UP)."
+          },
+          "response": []
+        },
+        {
+          "name": "Actuator Readiness Probe",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/health/readiness",
+              "host": ["{{baseUrl}}"],
+              "path": ["actuator", "health", "readiness"]
+            },
+            "description": "Readiness probe verifying database and Redis connections (returns status: UP with db and redis components)."
+          },
+          "response": []
+        },
+        {
+          "name": "Prometheus Metrics Scrape",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/prometheus",
+              "host": ["{{baseUrl}}"],
+              "path": ["actuator", "prometheus"]
+            },
+            "description": "Prometheus text exposition endpoint for metric scrapers (includes HTTP latencies, p50/p95/p99 percentiles, HikariCP pool, and analytics drops)."
+          },
+          "response": []
+        },
+        {
           "name": "OpenAPI Specification (JSON)",
           "request": {
             "method": "GET",

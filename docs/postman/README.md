@@ -4,8 +4,10 @@ This directory contains ready-to-import Postman configuration files for testing 
 
 ## Files
 1. **`urlbit.postman_collection.json`** — The collection containing all API endpoints organized by folder:
-   - **Health & Docs:** `/actuator/health`, `/v3/api-docs`
-   - **Link Management:** Create (Guest & Authenticated), Get by ID, List, Update, Soft Delete
+   - **Health & Docs:** `/actuator/health`, `/actuator/health/liveness`, `/actuator/health/readiness`, `/actuator/prometheus`, `/v3/api-docs`
+   - **Authentication & Profile:** Signup, Login, Refresh Token Rotation, Logout, Me Profile (`/api/v1/auth/*`)
+   - **Link Management:** Create (Guest & Authenticated), Get by ID, List, Update, Soft Delete (`/api/v1/urls/*`)
+   - **Click Analytics:** Aggregated Daily Counts & Top Referrer Hosts (`/api/v1/analytics/urls/{id}`)
    - **Public Redirect:** `GET /{code}` (HTTP 302 / 404)
 2. **`urlbit_local.postman_environment.json`** — Environment configuration pointing `baseUrl` to `http://localhost:8080`.
 

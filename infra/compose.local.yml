@@ -1,3 +1,9 @@
+# Urlbit Local Development Infrastructure
+# Runs backing datastores (PostgreSQL, Redis) and local monitoring (Prometheus, Grafana).
+# Usage:
+#   docker compose -f infra/compose.local.yml up -d
+#   docker compose -f infra/compose.local.yml --profile monitoring up -d
+
 services:
   postgres:
     image: postgres:16-alpine
