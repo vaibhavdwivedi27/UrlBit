@@ -1,0 +1,102 @@
+# ==============================================================================
+# Urlbit Turnkey Production Stack
+# Starts PostgreSQL 16, Redis 7, Spring Boot Backend, Prometheus, and Grafana.
+# Usage:
+#   docker compose -f infra/compose.prod.yml up -d --build
+# ==============================================================================
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: urlbit-prod-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-urlbit}
+      POSTGRES_USER: ${POSTGRES_USER:-urlbit}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-urlbit_prod_password}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - urlbit-pg-prod-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-urlbit} -d ${POSTGRES_DB:-urlbit}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: urlbit-prod-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - urlbit-redis-prod-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: urlbit-prod-backend
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB:-urlbit}
+      DB_USERNAME: ${POSTGRES_USER:-urlbit}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-urlbit_prod_password}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      SERVER_PORT: 8080
+      BASE_URL: ${BASE_URL:-http://localhost:8080}
+      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      FORWARD_HEADERS_STRATEGY: framework
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health/readiness"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 25s
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: urlbit-prod-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.0.0
+    container_name: urlbit-prod-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/etc/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+volumes:
+  urlbit-pg-prod-data:
+  urlbit-redis-prod-data:
