@@ -6,13 +6,29 @@ REM Usage: seed.bat [container_name]
 REM ==============================================================================
 
 set CONTAINER_NAME=%1
-if "%CONTAINER_NAME%"=="" set CONTAINER_NAME=urlbit-postgres
+
+if "%CONTAINER_NAME%"=="" (
+  docker ps --format "{{.Names}}" | findstr /C:"urlbit-postgres" >nul
+  if not errorlevel 1 (
+    set CONTAINER_NAME=urlbit-postgres
+  ) else (
+    docker ps --format "{{.Names}}" | findstr /C:"urlbit-prod-postgres" >nul
+    if not errorlevel 1 (
+      set CONTAINER_NAME=urlbit-prod-postgres
+    ) else (
+      set CONTAINER_NAME=urlbit-postgres
+    )
+  )
+)
 
 echo Checking if PostgreSQL container '%CONTAINER_NAME%' is running...
 docker ps --format "{{.Names}}" | findstr /C:"%CONTAINER_NAME%" >nul
 if errorlevel 1 (
-  echo ERROR: Container '%CONTAINER_NAME%' is not running.
-  echo Start infrastructure first with: docker compose -f infra\compose.local.yml up -d postgres
+  echo ERROR: Neither 'urlbit-postgres' nor 'urlbit-prod-postgres' is running.
+  echo Start infrastructure first with:
+  echo   docker compose -f infra\compose.local.yml up -d postgres
+  echo   OR
+  echo   docker compose -f infra\compose.prod.yml up -d postgres
   exit /b 1
 )
 

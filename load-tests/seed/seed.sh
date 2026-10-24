@@ -6,14 +6,28 @@
 # ==============================================================================
 set -e
 
-CONTAINER_NAME=${1:-urlbit-postgres}
+CONTAINER_NAME=${1:-}
+
+if [ -z "${CONTAINER_NAME}" ]; then
+  if docker ps --format '{{.Names}}' | grep -q "^urlbit-postgres$"; then
+    CONTAINER_NAME="urlbit-postgres"
+  elif docker ps --format '{{.Names}}' | grep -q "^urlbit-prod-postgres$"; then
+    CONTAINER_NAME="urlbit-prod-postgres"
+  else
+    CONTAINER_NAME="urlbit-postgres"
+  fi
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SQL_FILE="${SCRIPT_DIR}/seed-data.sql"
 
 echo "Checking if PostgreSQL container '${CONTAINER_NAME}' is running..."
 if ! docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
-  echo "ERROR: Container '${CONTAINER_NAME}' is not running."
-  echo "Start infrastructure first with: docker compose -f infra/compose.local.yml up -d postgres"
+  echo "ERROR: Neither 'urlbit-postgres' nor 'urlbit-prod-postgres' is running."
+  echo "Start infrastructure first with:"
+  echo "  docker compose -f infra/compose.local.yml up -d postgres"
+  echo "  OR"
+  echo "  docker compose -f infra/compose.prod.yml up -d postgres"
   exit 1
 fi
 
