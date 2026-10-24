@@ -93,5 +93,29 @@ The dashboard automatically visualizes:
 
 ---
 
-## 4. Recording Benchmark Results
+---
+
+## 4. Comprehensive Load Test Plan
+For detailed testing strategy, scenarios, execution order, Prometheus expressions, and failure drills, see the **[Urlbit Load Test Plan](../../load-tests/LOAD_TEST_PLAN.md)**.
+
+---
+
+## 5. Recording Benchmark Results
 Copy `BENCHMARK_TEMPLATE.md` to a new report file (e.g., `results-2026-10-24.md`) and paste the k6 console summary alongside machine specifications.
+
+---
+
+## 6. Post-Test Data Cleanup
+After completing load tests, if you wish to reset test data without rebuilding containers:
+- **Reset PostgreSQL test data:**
+  ```bash
+  docker exec -it urlbit-postgres psql -U urlbit -d urlbit -c "TRUNCATE TABLE url_click_daily, url_click_referrer, short_urls CASCADE;"
+  ```
+- **Reset Redis cache & rate-limits:**
+  ```bash
+  docker exec -it urlbit-redis redis-cli FLUSHALL
+  ```
+- **Complete fresh restart (wipe Docker volumes):**
+  ```bash
+  docker compose -f infra/compose.local.yml down -v
+  ```

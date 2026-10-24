@@ -227,7 +227,7 @@ You don't need k6 installed locally; run scenarios via the official container:
 ./load-tests/run-k6.sh create-api.js
 ```
 
-Detailed benchmarking guide, target SLAs, and execution report templates are documented in [`docs/benchmarks/README.md`](docs/benchmarks/README.md).
+Detailed benchmarking guide, target SLAs, failure drills, and execution report templates are documented in the **[Load Test Plan](load-tests/LOAD_TEST_PLAN.md)** and [`docs/benchmarks/README.md`](docs/benchmarks/README.md).
 
 ---
 
