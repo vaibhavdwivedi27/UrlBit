@@ -1,6 +1,8 @@
 spring:
   application:
     name: urlbit
+  lifecycle:
+    timeout-per-shutdown-phase: 15s
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:urlbit}
     username: ${DB_USERNAME:urlbit}
@@ -23,6 +25,7 @@ spring:
 server:
   port: ${SERVER_PORT:8080}
   forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:framework}
+  shutdown: graceful
 
 management:
   endpoints:
@@ -31,7 +34,28 @@ management:
         include: health,info,prometheus,metrics
   endpoint:
     health:
-      show-details: when-authorized
+      show-details: always
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db,redis
+    prometheus:
+      enabled: true
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  metrics:
+    tags:
+      application: urlbit
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.5, 0.95, 0.99
 
 springdoc:
   api-docs:

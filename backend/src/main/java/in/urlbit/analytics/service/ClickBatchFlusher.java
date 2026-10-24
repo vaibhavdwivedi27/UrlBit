@@ -73,30 +73,42 @@ public class ClickBatchFlusher {
             return 0;
         }
 
-        int totalFlushed = 0;
-        int batchSize = properties.getBatchSize();
-
-        while (!buffer.isEmpty()) {
-            List<ClickEvent> batch = buffer.drainBatch(batchSize);
-            if (batch.isEmpty()) {
-                break;
-            }
-
-            try {
-                flushBatch(batch);
-                totalFlushed += batch.size();
-                processedCounter.increment(batch.size());
-            } catch (Exception ex) {
-                log.error("Failed to flush batch of {} click events", batch.size(), ex);
-                // Under the spec's best-effort contract, continue rather than hanging
-                break;
-            }
+        boolean clearMdc = false;
+        if (org.slf4j.MDC.get("requestId") == null) {
+            org.slf4j.MDC.put("requestId", "batch-flush-" + java.util.UUID.randomUUID());
+            clearMdc = true;
         }
 
-        if (totalFlushed > 0) {
-            log.debug("Successfully flushed {} click events to PostgreSQL", totalFlushed);
+        try {
+            int totalFlushed = 0;
+            int batchSize = properties.getBatchSize();
+
+            while (!buffer.isEmpty()) {
+                List<ClickEvent> batch = buffer.drainBatch(batchSize);
+                if (batch.isEmpty()) {
+                    break;
+                }
+
+                try {
+                    flushBatch(batch);
+                    totalFlushed += batch.size();
+                    processedCounter.increment(batch.size());
+                } catch (Exception ex) {
+                    log.error("Failed to flush batch of {} click events", batch.size(), ex);
+                    // Under the spec's best-effort contract, continue rather than hanging
+                    break;
+                }
+            }
+
+            if (totalFlushed > 0) {
+                log.debug("Successfully flushed {} click events to PostgreSQL", totalFlushed);
+            }
+            return totalFlushed;
+        } finally {
+            if (clearMdc) {
+                org.slf4j.MDC.remove("requestId");
+            }
         }
-        return totalFlushed;
     }
 
     @Transactional

@@ -27,11 +27,14 @@ public class SafeBrowsingRescanJob {
 
     @Scheduled(cron = "${urlbit.jobs.rescan.cron:0 0 * * * *}") // Hourly
     public void runRescan() {
+        org.slf4j.MDC.put("requestId", "rescan-" + java.util.UUID.randomUUID());
         try {
             int flagged = linkService.rescanBatch(BATCH_SIZE);
             log.info("Completed safety re-scan batch, flagged and disabled {} links", flagged);
         } catch (Exception ex) {
             log.error("Failed during scheduled safety re-scan run", ex);
+        } finally {
+            org.slf4j.MDC.remove("requestId");
         }
     }
 }

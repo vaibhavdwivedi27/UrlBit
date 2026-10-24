@@ -25,11 +25,14 @@ public class GuestQuotaPurgeJob {
 
     @Scheduled(cron = "0 0 3 * * *") // Daily at 03:00 UTC
     public void runPurge() {
+        org.slf4j.MDC.put("requestId", "purge-" + java.util.UUID.randomUUID());
         try {
             int purged = linkService.purgeExpiredGuestQuotas();
             log.info("Completed guest quota purge run, removed {} rows", purged);
         } catch (Exception ex) {
             log.error("Failed during scheduled guest quota purge", ex);
+        } finally {
+            org.slf4j.MDC.remove("requestId");
         }
     }
 }
