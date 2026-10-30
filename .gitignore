@@ -33,4 +33,5 @@ dist/
 
 # Local personal docs
 LOCAL_RUN.md
+*.local.md
 

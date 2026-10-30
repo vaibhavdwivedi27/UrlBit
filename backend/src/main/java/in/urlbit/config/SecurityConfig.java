@@ -1,6 +1,7 @@
 package in.urlbit.config;
 
 import in.urlbit.security.JwtAuthenticationFilter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -18,9 +19,15 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtFilter;
+    private final String allowedOrigins;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtFilter) {
+    public SecurityConfig(
+            JwtAuthenticationFilter jwtFilter,
+            @Value(
+                            "${urlbit.cors.allowed-origins:http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://127.0.0.1:3000,https://*.vercel.app}")
+                    String allowedOrigins) {
         this.jwtFilter = jwtFilter;
+        this.allowedOrigins = allowedOrigins;
     }
 
     @Bean
@@ -31,12 +38,20 @@ public class SecurityConfig {
     @Bean
     public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
         var configuration = new org.springframework.web.cors.CorsConfiguration();
-        configuration.setAllowedOrigins(
-                java.util.List.of(
-                        "http://localhost:5173",
-                        "http://localhost:3000",
-                        "http://127.0.0.1:5173",
-                        "http://127.0.0.1:3000"));
+        var origins =
+                java.util.Arrays.stream(allowedOrigins.split(","))
+                        .map(String::strip)
+                        .filter(s -> !s.isBlank())
+                        .toList();
+
+        for (String origin : origins) {
+            if (origin.contains("*")) {
+                configuration.addAllowedOriginPattern(origin);
+            } else {
+                configuration.addAllowedOrigin(origin);
+            }
+        }
+
         configuration.setAllowedMethods(
                 java.util.List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(java.util.List.of("*"));
